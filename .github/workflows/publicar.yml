@@ -1,0 +1,44 @@
+# Cada hora revisa la cola (planilla de Google, variable HOJA_COLA) y sube a su hora lo que toca. Ver README.md..
+# A mano: botón "Run workflow" (con "solo probar" no publica: muestra la cola y revisa las claves).
+name: Publicar
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"   # cada 15 min (GitHub a veces parte tarde)
+  workflow_dispatch:
+    inputs:
+      solo_probar:
+        description: "Solo probar (no publica nada)"
+        type: boolean
+        default: true
+      prueba_youtube:
+        description: "Subir un video de 3 s PRIVADO a cada canal de YouTube (para ver que cada llave va a su canal)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write     # avisos cuando algo no sale
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: ffmpeg (solo para la prueba de YouTube)
+        if: ${{ inputs.prueba_youtube }}
+        run: which ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null)
+      - name: Publicar lo que toca
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SECRETOS: ${{ toJSON(secrets) }}   # cada página dice en paginas/*.json qué secreto usa
+          HOJA_COLA: ${{ vars.HOJA_COLA }}
+        run: python publicar.py ${{ inputs.prueba_youtube && '--prueba-youtube' || (inputs.solo_probar && '--prueba' || '') }}

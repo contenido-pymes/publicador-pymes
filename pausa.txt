@@ -1,0 +1,2 @@
+# Días de PAUSA (fecha local, uno por línea, AAAA-MM-DD): ese día no se publica nada en ninguna página.
+# Para quitar una pausa, borra la línea. Los videos con fecha de un día en pausa no salen después (hay que darles otra fecha).
