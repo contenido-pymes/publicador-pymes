@@ -1,7 +1,7 @@
 # Instrucciones para cualquier IA (Claude, Codex, Gemini, DeepSeek, una IA local…)
 
 Este repo publica videos en Instagram, Facebook y YouTube a su hora. Lee README.md primero.
-El repo es **público**: nunca escribas aquí nombres de páginas, IDs de planillas, correos ni llaves.
+El repo es **privado** (los registros y avisos muestran nombres de clientes). Igual, nunca escribas en el código nombres de páginas, IDs de planillas, correos ni llaves.
 Todo lo del dueño vive en su planilla (pestañas `cola`, `paginas`, `otros`) y en los *secrets* del repo.
 
 Pedidos típicos:

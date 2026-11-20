@@ -1,10 +1,10 @@
-# Cada hora revisa la cola (planilla de Google, variable HOJA_COLA) y sube a su hora lo que toca. Ver README.md..
+# Revisa la cola (planilla de Google, variable HOJA_COLA) y sube a su hora lo que toca. Ver README.md.
+# Lo despierta cron-job.org cada 30 min de 8:00 a 23:00 (hora de Chile). Repo PRIVADO: sin reloj propio de GitHub,
+# para no gastar los 2.000 minutos gratis del mes (~900 min/mes así).
 # A mano: botón "Run workflow" (con "solo probar" no publica: muestra la cola y revisa las claves).
 name: Publicar
 
 on:
-  schedule:
-    - cron: "7,22,37,52 * * * *"   # cada 15 min (GitHub a veces parte tarde)
   workflow_dispatch:
     inputs:
       solo_probar:
