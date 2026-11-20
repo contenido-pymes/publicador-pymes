@@ -279,7 +279,7 @@ def probar_claves():
                 try:
                     yo = meta.cuenta(token)
                     ig = (yo.get("instagram_business_account") or {}).get("username", "sin Instagram")
-                    print(f"{nombre}: clave de Meta OK · Facebook '{yo['name']}' · Instagram @{ig}")
+                    print(f"{nombre}: clave de Meta OK · Facebook ✓ · Instagram {'✓' if ig != 'sin Instagram' else 'NO CONECTADO'}")   # en clave: el repo es público
                     try:   # una llave de Meta mal sacada dura 1 hora: se avisa antes de que venza
                         fin = meta.vence(token)
                         if fin:
@@ -302,7 +302,7 @@ def probar_claves():
                 acceso = acceso_google(pag["youtube"])
                 try:   # con el permiso de solo lectura (2-nov) también se ve a qué canal va y sus números
                     titulo, subs, vistas, videos = youtube.canal(acceso)
-                    print(f"{nombre}: YouTube OK · canal '{titulo}' · {subs} suscriptores · {vistas} vistas · {videos} videos")
+                    print(f"{nombre}: YouTube OK · {subs} suscriptores · {vistas} vistas · {videos} videos")   # en clave: sin el nombre del canal
                 except Exception:
                     print(f"{nombre}: YouTube OK (esta llave no tiene permiso para ver estadísticas: sácala de nuevo con autorizar_google.py --youtube)")
             except Exception as ex:

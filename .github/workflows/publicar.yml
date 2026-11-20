@@ -1,11 +1,13 @@
-# Revisa la cola (planilla de Google, variable HOJA_COLA) y sube a su hora lo que toca. Ver README.md.
-# Repo PRIVADO (2.000 min gratis al mes): sin reloj propio de GitHub. Lo despierta cron-job.org SOLO en las horas
-# de publicación y 15 y 30 min después (por si reintenta): hoy 12:00 y 18:00 (hora de Chile) → 6 vueltas al día,
-# ~180 vueltas al mes ≈ 200–250 min (meta: menos de 500). Si se agrega una hora de publicación, sumarla en cron-job.org.
+# Revisa la cola (planilla de Google) y sube a su hora lo que toca. Ver README.md.
+# Repo PÚBLICO (minutos ilimitados) y EN CLAVE: las páginas se llaman c01, c02… (la planilla y los secretos dicen cuál es
+# cuál; el motor privado lo anota en marca.json → "publicador"). El registro no muestra nombres, textos ni links.
+# Lo despierta cron-job.org cada 15 min; el reloj de GitHub queda de respaldo.
 # A mano: botón "Run workflow" (con "solo probar" no publica: muestra la cola y revisa las claves).
 name: Publicar
 
 on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"   # respaldo cada 15 min (GitHub a veces parte tarde; el puntual es cron-job.org)
   workflow_dispatch:
     inputs:
       solo_probar:
@@ -41,5 +43,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SECRETOS: ${{ toJSON(secrets) }}   # cada página dice en paginas/*.json qué secreto usa
-          HOJA_COLA: ${{ vars.HOJA_COLA }}
+          HOJA_COLA: ${{ secrets.HOJA_COLA }}   # secreto (no variable): así no aparece en el registro
         run: python publicar.py ${{ inputs.prueba_youtube && '--prueba-youtube' || (inputs.solo_probar && '--prueba' || '') }}

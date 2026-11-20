@@ -32,6 +32,8 @@ def _valor(token, ident, ruta, nombres):
 
 
 def _fila(*campos):
+    # EN CLAVE (repo público): sin el texto ni el link del video, que delatan de qué negocio es. Quedan fecha y números.
+    campos = campos[:-2] + ("", "")
     print("VIDEO\t" + "\t".join("" if x is None else " ".join(str(x).split()) for x in campos))
 
 
@@ -99,7 +101,7 @@ def subidos(acceso, cuantos=50):
 
 
 def mostrar(paginas, secretos, acceso_google, items):
-    print("\n==== Reproducciones (columnas: página, red, fecha UTC, vistas, segundos promedio, me gusta, comentarios, texto, link)")
+    print("\n==== Reproducciones (columnas: página, red, fecha UTC, vistas, segundos promedio, me gusta, comentarios; sin texto ni link: el repo es público)")
     for clave, pag in paginas.items():
         if not pag:
             continue
