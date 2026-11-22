@@ -27,6 +27,7 @@ def main():
     ap.add_argument("--texto", default="")
     ap.add_argument("--texto-archivo")
     ap.add_argument("--portada")
+    ap.add_argument("--titulo", help='de qué trata (ej. "Comercial Mauro - Living Mustang"): el archivo en Drive queda "2026-11-27 12h00 Comercial Mauro - Living Mustang.mp4"')
     ap.add_argument("--salida", help="archivo donde anotar el link del video en Drive (para avisos y frenar.py)")
     a = ap.parse_args()
     cargar_env()
@@ -42,7 +43,8 @@ def main():
 
     token = google.acceso(os.environ["GOOGLE_CLIENT_ID"], os.environ["GOOGLE_CLIENT_SECRET"], os.environ["GOOGLE_REFRESH"])
     carpeta = os.environ.get("CARPETA_VIDEOS", "")
-    base = f"{a.pagina}_{cuando:%Y-%m-%d_%H%M}"
+    titulo = re.sub(r'[\\/:*?"<>|]+', " ", a.titulo or "").strip()
+    base = f"{cuando:%Y-%m-%d %Hh%M} {titulo}" if titulo else f"{a.pagina}_{cuando:%Y-%m-%d_%H%M}"
     link = google.subir(token, a.video, carpeta, f"{base}.mp4")
     portada = google.subir(token, a.portada, carpeta, f"{base}_portada.jpg", "image/jpeg") if a.portada else ""
     google.agregar(token, os.environ["HOJA_COLA"], "cola!A:F",
