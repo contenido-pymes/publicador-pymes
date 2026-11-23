@@ -6,6 +6,8 @@ Todo lo del dueño vive en su planilla (pestañas `cola`, `paginas`, `otros`) y 
 
 Pedidos típicos:
 - "Sube el video X a la página Y a tal hora" → `python encolar.py --pagina Y --video X --hora "AAAA-MM-DD HH:MM" --texto "..."`.
+  Post de fotos o carrusel (de 1 a 10 JPG, mejor 1080x1350): `--fotos 01.jpg 02.jpg …` en vez de `--video`; en la
+  columna D quedan los links de las fotos, uno por línea, y sale solo en Facebook e Instagram.
   Las páginas válidas son las de la columna A de la pestaña `paginas`. Varios videos → un `encolar.py` por video.
 - "¿Qué hay en la cola?" → pestaña `cola`; la columna G dice el estado de cada video.
 - "Saca/cambia un video" → borra o edita su fila, solo si la columna G no dice ✅.

@@ -1,4 +1,4 @@
-"""Facebook e Instagram (Reels) con el token de la página. El token de página no caduca.
+"""Facebook e Instagram (Reels y posts de fotos/carrusel) con el token de la página. El token de página no caduca.
 Se sube el archivo directo a Meta (subida "resumable"): el video no tiene que estar en una URL pública."""
 import json, os, shutil, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 
@@ -134,17 +134,62 @@ def enlace_oculto(token, video):
     raise ErrorMeta("Facebook no entregó el enlace del video oculto para Instagram.")
 
 
-def enlace_portada(token, archivo):
-    """Instagram pide la portada como enlace: se sube como foto OCULTA (sin publicar) a la página y se usa su enlace."""
+def foto_oculta(token, archivo):
+    """Sube una foto a la página SIN publicarla (nadie la ve) y devuelve su id."""
     yo = cuenta(token)
     limite = "----publicador" + str(int(time.time()))
     cuerpo = (f"--{limite}\r\nContent-Disposition: form-data; name=\"published\"\r\n\r\nfalse\r\n"
-              f"--{limite}\r\nContent-Disposition: form-data; name=\"source\"; filename=\"portada.jpg\"\r\n"
+              f"--{limite}\r\nContent-Disposition: form-data; name=\"source\"; filename=\"foto.jpg\"\r\n"
               f"Content-Type: image/jpeg\r\n\r\n").encode() + open(archivo, "rb").read() + f"\r\n--{limite}--\r\n".encode()
-    f = pedir("POST", f"{API}/{yo['id']}/photos?access_token={token}", cuerpo=cuerpo,
-              cabeceras={"Content-Type": f"multipart/form-data; boundary={limite}"})
-    imagenes = pedir("GET", f"{API}/{f['id']}?fields=images&access_token={token}").get("images") or []
+    return pedir("POST", f"{API}/{yo['id']}/photos?access_token={token}", cuerpo=cuerpo,
+                 cabeceras={"Content-Type": f"multipart/form-data; boundary={limite}"})["id"]
+
+
+def enlace_portada(token, archivo):
+    """Instagram pide las imágenes como enlace: se sube como foto OCULTA (sin publicar) a la página y se usa su enlace."""
+    f = foto_oculta(token, archivo)
+    imagenes = pedir("GET", f"{API}/{f}?fields=images&access_token={token}").get("images") or []
     return max(imagenes, key=lambda i: i.get("width", 0))["source"]
+
+
+def facebook_fotos(token, fotos, texto):
+    """Post de fotos en la página: 1 foto = post de foto; varias = un solo post con todas (álbum/carrusel)."""
+    yo = cuenta(token)
+    ids = [foto_oculta(token, f) for f in fotos]
+    datos = {"message": texto, "published": "true", "access_token": token}
+    for i, f in enumerate(ids):
+        datos[f"attached_media[{i}]"] = json.dumps({"media_fbid": f})
+    r = pedir("POST", f"{API}/{yo['id']}/feed", datos)
+    if not r.get("id"):
+        raise ErrorMeta(f"Facebook respondió: {r}")
+    return r["id"]
+
+
+def instagram_fotos(token, fotos, texto):
+    """Post de Instagram: 1 foto = imagen; de 2 a 10 = carrusel. Las fotos deben ser JPG (mejor 1080x1350, 4:5)."""
+    ig = (cuenta(token).get("instagram_business_account") or {}).get("id")
+    if not ig:
+        raise ErrorMeta("La página no tiene un Instagram profesional conectado.")
+    if len(fotos) > 10:
+        raise ErrorMeta(f"Instagram acepta hasta 10 fotos por carrusel (este trae {len(fotos)}).")
+    enlaces = [enlace_portada(token, f) for f in fotos]
+    if len(enlaces) == 1:
+        c = pedir("POST", f"{API}/{ig}/media", {"image_url": enlaces[0], "caption": texto, "access_token": token})
+    else:
+        hijos = [pedir("POST", f"{API}/{ig}/media", {"image_url": e, "is_carousel_item": "true", "access_token": token})["id"]
+                 for e in enlaces]
+        c = pedir("POST", f"{API}/{ig}/media", {"media_type": "CAROUSEL", "children": ",".join(hijos), "caption": texto,
+                                               "access_token": token})
+    for _ in range(30):   # las fotos se procesan rápido, pero hay que esperar a que esté listo
+        s = pedir("GET", f"{API}/{c['id']}?fields=status_code&access_token={token}")
+        if s.get("status_code") == "FINISHED":
+            break
+        if s.get("status_code") == "ERROR":
+            raise ErrorMeta("Instagram no pudo procesar las fotos.")
+        time.sleep(5)
+    else:
+        raise ErrorMeta("Instagram tardó demasiado en procesar las fotos.")
+    return pedir("POST", f"{API}/{ig}/media_publish", {"creation_id": c["id"], "access_token": token})["id"]
 
 
 def instagram(token, video, texto, ligero=False, portada=None, prueba=None):
