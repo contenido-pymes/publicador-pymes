@@ -30,6 +30,7 @@ def main():
     ap.add_argument("--texto-archivo")
     ap.add_argument("--portada")
     ap.add_argument("--titulo", help='de qué trata (ej. "Comercial Mauro - Living Mustang"): el archivo en Drive queda "2026-11-27 12h00 Comercial Mauro - Living Mustang.mp4"')
+    ap.add_argument("--carpeta", help="ID de la carpeta de Drive de esa página (si no, CARPETA_VIDEOS): así cada negocio guarda lo suyo")
     ap.add_argument("--salida", help="archivo donde anotar el link del video en Drive (para avisos y frenar.py)")
     a = ap.parse_args()
     cargar_env()
@@ -49,7 +50,7 @@ def main():
     texto = open(a.texto_archivo, encoding="utf-8").read() if a.texto_archivo else a.texto
 
     token = google.acceso(os.environ["GOOGLE_CLIENT_ID"], os.environ["GOOGLE_CLIENT_SECRET"], os.environ["GOOGLE_REFRESH"])
-    carpeta = os.environ.get("CARPETA_VIDEOS", "")
+    carpeta = a.carpeta or os.environ.get("CARPETA_VIDEOS", "")
     titulo = re.sub(r'[\\/:*?"<>|]+', " ", a.titulo or "").strip()
     base = f"{cuando:%Y-%m-%d %Hh%M} {titulo}" if titulo else f"{a.pagina}_{cuando:%Y-%m-%d_%H%M}"
     if a.fotos:   # post: un link por foto, uno por línea en la columna D
