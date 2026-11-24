@@ -4,6 +4,8 @@
 
 La cola es una planilla de Google tuya (variable HOJA_COLA), pestaña "cola", una fila por video:
   A página · B fecha · C hora · D video (link de Drive) · E texto · F portada (link, opcional)
+  Post de fotos o carrusel: en D van los links de las fotos (JPG, 1080x1350), uno por línea y en orden; sale solo en
+  Facebook e Instagram (YouTube no lleva fotos) y F queda vacía.
   G estado y H detalle → los escribe el sistema; no los toques.
 Las páginas se configuran en la pestaña "paginas" de esa misma planilla (ver config.py). Los videos quedan
 privados en tu Drive: nadie más los ve. Además revisa los *releases* de los repos privados de las páginas que
@@ -87,6 +89,8 @@ def publicar_en(red, pag, video, texto, portada, ligero, prueba=None):
         token = SECRETOS.get(pag["meta"])
         if not token:
             raise RuntimeError(f"Falta la clave {pag['meta']} en los secretos del repo.")
+        if isinstance(video, list):   # post de fotos / carrusel
+            return (meta.facebook_fotos if red == "facebook" else meta.instagram_fotos)(token, video, texto)
         if red == "facebook":
             return meta.facebook(token, video, texto, portada)
         return meta.instagram(token, video, texto, ligero, portada, prueba)
@@ -100,6 +104,8 @@ def publicar_en(red, pag, video, texto, portada, ligero, prueba=None):
             except Exception as ex:   # el video ya está arriba: solo se avisa (p. ej. canal sin verificar con teléfono)
                 print(f"  ⚠ youtube: no pude poner la portada ({' '.join(str(ex).split())[:150]})")
         return ident
+    if isinstance(video, list):
+        raise RuntimeError(f"{red} no publica posts de fotos.")
     raise RuntimeError(f"No conozco la red '{red}'.")
 
 
@@ -112,6 +118,8 @@ class Fila:
         self.etiqueta = f"fila {n}"
         self.vacia = not self.nombre.strip() or not self.video.strip()
         self.estado = json.loads(self.detalle) if self.detalle.strip().startswith("{") else {}
+        self.links = [l for l in re.split(r"[\s,]+", self.video) if l.strip()]
+        self.fotos = len(self.links) > 1   # varios links en D = carrusel (1 foto sola se reconoce al bajarla)
 
     def guardar(self, resumen):
         nuevo = json.dumps(self.estado, ensure_ascii=False)
@@ -120,9 +128,22 @@ class Fila:
             self.resumen, self.detalle = resumen, nuevo
 
     def bajar(self, carpeta):
+        if self.fotos:
+            fotos = [os.path.join(carpeta, f"foto{i:02d}.jpg") for i in range(1, len(self.links) + 1)]
+            for link, f in zip(self.links, fotos):
+                if not os.path.exists(f):
+                    google.bajar(self.token, google.id_drive(link), f)
+            return fotos, None
         archivo = os.path.join(carpeta, "video.mp4")
         if not os.path.exists(archivo):
             google.bajar(self.token, google.id_drive(self.video), archivo)
+        with open(archivo, "rb") as f:
+            inicio = f.read(8)
+        if inicio.startswith(b"\xff\xd8") or inicio.startswith(b"\x89PNG"):   # D era una foto, no un video
+            self.fotos = True
+            foto = os.path.join(carpeta, "foto01.jpg")
+            os.replace(archivo, foto)
+            return [foto], None
         portada = None
         if self.portada.strip():
             portada = google.bajar(self.token, google.id_drive(self.portada), os.path.join(carpeta, "portada.jpg"))
@@ -130,7 +151,7 @@ class Fila:
 
     def limpiar(self):
         # ya salió en todas sus redes: el video (y su portada) van a la papelera de Drive para no llenarlo
-        for link in (self.video, self.portada):
+        for link in self.links + [self.portada]:
             if link.strip():
                 google.a_papelera(self.token, google.id_drive(link))
 
@@ -203,6 +224,8 @@ def revisar(item, ahora):
     guardar = (lambda resumen: None) if PRUEBA else item.guardar
 
     pag = pagina(item.nombre)
+    if pag and getattr(item, "fotos", False):   # los posts de fotos salen solo en Facebook e Instagram
+        pag = {**pag, "redes": [x for x in pag["redes"] if x in ("facebook", "instagram")]}
     if pag and getattr(item, "redes", None):
         pag = {**pag, "redes": [x for x in pag["redes"] if x in item.redes]}
     try:
@@ -238,6 +261,9 @@ def revisar(item, ahora):
     carpeta = os.path.join(AQUI, "bajados", re.sub(r"[^\w.-]", "_", item.etiqueta))
     os.makedirs(carpeta, exist_ok=True)
     archivo, portada_archivo = item.bajar(carpeta)
+    if isinstance(archivo, list):   # post de fotos (aunque D tuviera un solo link): solo Facebook e Instagram
+        pag = {**pag, "redes": [x for x in pag["redes"] if x in ("facebook", "instagram")]}
+        faltan = [r for r in faltan if r in pag["redes"]]
     for red in faltan:
         try:
             ident = publicar_en(red, pag, archivo, item.texto, portada_archivo, ligero=estado.get("intentos", 0) > 0,
