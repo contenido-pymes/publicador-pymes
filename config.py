@@ -3,7 +3,8 @@
 Pestaña "paginas" de la planilla de la cola (fila 1 = títulos; una fila por página):
   A página        → el nombre corto que escribes en la columna "página" de la cola (ej. mi-gimnasio)
   B nombre        → el nombre bonito (sale en los avisos)
-  C redes         → facebook, instagram, youtube (separadas por coma)
+  C redes         → facebook, instagram, youtube, historias (separadas por coma). "historias" = después del Reel,
+                    el mismo video sale como historia en Facebook e Instagram (no aplica a posts de fotos)
   D llave Meta    → NOMBRE del secreto con la llave de Facebook/Instagram (ej. META_MI_GIMNASIO)
   E llave YouTube → NOMBRE del secreto con la llave del canal (ej. YT_MI_GIMNASIO)
   F por día       → (opcional) cuántos videos se esperan cada día: si faltan, llega un aviso
@@ -47,8 +48,10 @@ def desde_planilla(leer):
         clave = f[0].strip().lower()
         if not clave:
             continue
-        pag = {"nombre": f[1].strip() or clave,
-               "redes": [r.strip().lower() for r in f[2].replace(";", ",").split(",") if r.strip()]}
+        redes = [r.strip().lower() for r in f[2].replace(";", ",").split(",") if r.strip()]
+        if "historias" in redes:   # al final: primero el Reel, después la historia
+            redes = [r for r in redes if r != "historias"] + ["historia_instagram", "historia_facebook"]
+        pag = {"nombre": f[1].strip() or clave, "redes": redes}
         if f[3].strip():
             pag["meta"] = f[3].strip()
         if f[4].strip():

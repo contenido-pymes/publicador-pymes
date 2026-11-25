@@ -85,6 +85,16 @@ def acceso_google(secreto="GOOGLE_REFRESH"):
 
 
 def publicar_en(red, pag, video, texto, portada, ligero, prueba=None):
+    if red in ("historia_facebook", "historia_instagram"):   # el mismo video del reel, como historia
+        token = SECRETOS.get(pag["meta"])
+        if not token:
+            raise RuntimeError(f"Falta la clave {pag['meta']} en los secretos del repo.")
+        if isinstance(video, list) or meta.es_horizontal(video):
+            return "no aplica"
+        corto = meta.historia_corta(video)
+        if red == "historia_facebook":
+            return meta.facebook_historia(token, corto)
+        return meta.instagram(token, corto, "", ligero, tipo="STORIES")
     if red in ("facebook", "instagram"):
         token = SECRETOS.get(pag["meta"])
         if not token:

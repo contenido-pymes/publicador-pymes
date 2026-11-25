@@ -8,6 +8,9 @@ Pedidos típicos:
 - "Sube el video X a la página Y a tal hora" → `python encolar.py --pagina Y --video X --hora "AAAA-MM-DD HH:MM" --texto "..."`.
   Post de fotos o carrusel (de 1 a 10 JPG, mejor 1080x1350): `--fotos 01.jpg 02.jpg …` en vez de `--video`; en la
   columna D quedan los links de las fotos, uno por línea, y sale solo en Facebook e Instagram.
+- Historias: con `historias` en la columna C (redes) de la pestaña paginas, cada Reel vertical sale además como historia
+  en Instagram y Facebook, justo después del Reel (sin texto; si pasa de 60 s va con los primeros 59 s). Los posts de
+  fotos no salen en historias. No existe por API el botón "compartir reel en tu historia": es una historia aparte.
   Las páginas válidas son las de la columna A de la pestaña `paginas`. Varios videos → un `encolar.py` por video.
 - "¿Qué hay en la cola?" → pestaña `cola`; la columna G dice el estado de cada video.
 - "Saca/cambia un video" → borra o edita su fila, solo si la columna G no dice ✅.

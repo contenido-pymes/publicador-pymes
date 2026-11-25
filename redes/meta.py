@@ -98,6 +98,36 @@ def facebook(token, video, texto, portada=None):
     return c["video_id"]
 
 
+def historia_corta(video, maximo=60):
+    """Las historias aceptan hasta 60 s: si el video es más largo, sale una copia con los primeros 59 s."""
+    try:
+        r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", video],
+                           capture_output=True, text=True, check=True)
+        if float(r.stdout.strip()) <= maximo:
+            return video
+    except Exception as e:
+        print(f"aviso: no pude medir el largo del video ({e}); va entero a la historia")
+        return video
+    corto = video.rsplit(".", 1)[0] + "_historia.mp4"
+    if not os.path.exists(corto):
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", video, "-t", str(maximo - 1), "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                        "-c:a", "aac", "-movflags", "+faststart", corto], check=True)
+    print(f"aviso: el video pasa de {maximo} s; la historia lleva solo los primeros {maximo - 1} s")
+    return corto
+
+
+def facebook_historia(token, video):
+    """El mismo video como historia de la página de Facebook."""
+    yo = cuenta(token)
+    c = pedir("POST", f"{API}/{yo['id']}/video_stories", {"upload_phase": "start", "access_token": token})
+    subir(c["upload_url"], token, video)
+    r = pedir("POST", f"{API}/{yo['id']}/video_stories", {"upload_phase": "finish", "video_id": c["video_id"],
+                                                          "access_token": token})
+    if not r.get("success"):
+        raise ErrorMeta(f"Facebook respondió: {r}")
+    return r.get("post_id") or c["video_id"]
+
+
 def poner_portada(token, video_id, archivo):
     """Miniatura del reel de Facebook. Si falla, el video ya está arriba: solo se avisa en el registro."""
     limite = "----publicador" + str(int(time.time()))
@@ -192,8 +222,9 @@ def instagram_fotos(token, fotos, texto):
     return pedir("POST", f"{API}/{ig}/media_publish", {"creation_id": c["id"], "access_token": token})["id"]
 
 
-def instagram(token, video, texto, ligero=False, portada=None, prueba=None):
-    """prueba = "auto" o "manual": Reel de prueba (Trial Reel). Instagram lo muestra solo a gente que no te sigue;
+def instagram(token, video, texto, ligero=False, portada=None, prueba=None, tipo="REELS"):
+    """tipo="STORIES" = el mismo video como historia (sin texto ni portada; Instagram corta lo que pase de 60 s).
+    prueba = "auto" o "manual": Reel de prueba (Trial Reel). Instagram lo muestra solo a gente que no te sigue;
     con "auto" lo comparte con tus seguidores si le va bien en 72 horas, con "manual" decides tú en la app."""
     ig = (cuenta(token).get("instagram_business_account") or {}).get("id")
     if not ig:
@@ -207,12 +238,15 @@ def instagram(token, video, texto, ligero=False, portada=None, prueba=None):
         except Exception as e:   # sin portada igual se publica
             print(f"aviso: no pude preparar la portada para Instagram ({e})")
     feed = {"share_to_feed": "true"}
+    if tipo == "STORIES":
+        extra, feed, prueba = {}, {}, None
+    texto = {} if tipo == "STORIES" else {"caption": texto}   # las historias no llevan texto
     if prueba:   # Reel de prueba: sin share_to_feed (con share_to_feed=true Instagram lo publica como Reel normal)
         extra["trial_params"] = json.dumps({"graduation_strategy": "SS_PERFORMANCE" if prueba == "auto" else "MANUAL"})
         feed = {}
         print(f"Instagram: Reel de prueba ({extra['trial_params']})")
     for n in range(3):   # a ratos Meta rechaza la subida y minutos después la acepta
-        c = pedir("POST", f"{API}/{ig}/media", {"media_type": "REELS", "upload_type": "resumable", "caption": texto,
+        c = pedir("POST", f"{API}/{ig}/media", {"media_type": tipo, "upload_type": "resumable", **texto,
                                                "access_token": token, **feed, **extra})
         try:
             subir(c["uri"], token, video)
@@ -221,8 +255,8 @@ def instagram(token, video, texto, ligero=False, portada=None, prueba=None):
             print(f"aviso: Instagram rechazó la subida ({e})")
             if n == 2:
                 # plan B: el video se sube oculto a la página de Facebook y se le pasa a Instagram ese enlace
-                c = pedir("POST", f"{API}/{ig}/media", {"media_type": "REELS", "video_url": enlace_oculto(token, video),
-                                                       "caption": texto, "access_token": token,
+                c = pedir("POST", f"{API}/{ig}/media", {"media_type": tipo, "video_url": enlace_oculto(token, video),
+                                                       **texto, "access_token": token,
                                                        **feed, **extra})
                 break
             print("reintento en 2 minutos")
